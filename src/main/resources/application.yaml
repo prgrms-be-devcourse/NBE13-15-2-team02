@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: NBE13-15-2-team02
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+jwt:
+  secret: ${JWT_SECRET}
