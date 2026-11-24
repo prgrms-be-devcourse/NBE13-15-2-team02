@@ -14,10 +14,6 @@ public class Tag extends BaseEntity{
 
     public static final int MAX_NAME_LENGTH = 20;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
     // 정규화된 이름만 저장
     @Column(nullable = false, unique = true, length = MAX_NAME_LENGTH)
     private String name;
