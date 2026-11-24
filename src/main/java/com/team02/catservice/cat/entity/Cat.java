@@ -21,10 +21,6 @@ public class Cat extends BaseEntity {
 
     public static final int MAX_TAG_COUNT = 10;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
     // 고양이 등록자 및 보호자 N:1
 //    @ManyToOne(fetch = FetchType.LAZY, optional = false)
 //    @JoinColumn(name = "member_id", nullable = false)
