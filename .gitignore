@@ -18,6 +18,7 @@ bin/
 !**/src/test/**/bin/
 
 ### IntelliJ IDEA ###
+comm/
 .idea
 *.iws
 *.iml
@@ -43,3 +44,6 @@ out/
 
 ### Claude Code ###
 CLAUDE.md
+
+### 발표용 개인 기록 ###
+/comm/
