@@ -11,6 +11,7 @@ public record SignupRequest(
 
         @NotBlank(message = "비밀번호는 필수입니다.")
         @Size(min = 8, max = 72, message = "비밀번호는 8~72자입니다.")
+        @Pattern(regexp = "^[\\x21-\\x7E]+$", message = "비밀번호는 영문, 숫자, 특수문자만 사용할 수 있습니다.")
         String password,
 
         @NotBlank(message = "닉네임은 필수입니다.")
