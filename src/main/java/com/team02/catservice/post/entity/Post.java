@@ -84,7 +84,7 @@ public class Post extends BaseEntity {
         if ((this.category == PostCategory.LOST ||
                 this.category == PostCategory.ADOPTION)
                 && this.cat == null) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT);
+            throw new BusinessException(ErrorCode.CAT_REQUIRED);
         }
     }
 
