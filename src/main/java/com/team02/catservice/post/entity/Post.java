@@ -5,10 +5,14 @@ import com.team02.catservice.global.entity.BaseEntity;
 import com.team02.catservice.global.exception.BusinessException;
 import com.team02.catservice.global.exception.ErrorCode;
 import com.team02.catservice.member.entity.Member;
+import com.team02.catservice.tag.entity.Tag;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "post")
@@ -40,6 +44,8 @@ public class Post extends BaseEntity {
     @JoinColumn(name = "cat_id", nullable = true)
     private Cat cat;
 
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostTag> postTags = new ArrayList<>();
 
     public Post(String title, String content, PostCategory category, String imageUrl, Member member, Cat cat) {
         this.title = title;
@@ -91,6 +97,11 @@ public class Post extends BaseEntity {
     // 고양이 삭제 이벤트 처리용, 입양·분실 글이어도 cat 필수 검사를 하지 않음
     public void releaseCat(){
         this.cat = null;
+    }
+
+    public void addTag(Tag tag){
+        PostTag postTag = new PostTag(this, tag);
+        this.postTags.add(postTag);
     }
 
 }
