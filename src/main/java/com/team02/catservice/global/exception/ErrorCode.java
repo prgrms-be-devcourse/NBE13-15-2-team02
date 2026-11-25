@@ -15,6 +15,7 @@ public enum ErrorCode {
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다."),
     INVALID_TAG(HttpStatus.BAD_REQUEST, "태그 형식이 올바르지 않습니다."),
     TAG_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "태그는 최대 10개까지 등록할 수 있습니다."),
+    CAT_REQUIRED(HttpStatus.BAD_REQUEST, "입양·분실 글은 고양이를 연결해야 합니다."),
 
     // 401
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
