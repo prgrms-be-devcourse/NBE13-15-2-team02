@@ -737,6 +737,13 @@ docker run -d --name catservice-mysql \
 ### 3. `.env` 만들기
 
 프로젝트 **루트**에 `.env` 파일을 만듭니다. (`.gitignore`에 등록되어 저장소에 올라가지 않습니다.)
+저장소의 `.env.example`을 복사해서 시작하면 편합니다.
+
+```bash
+cp .env.example .env
+```
+
+복사한 뒤 아래 값을 환경에 맞게 채웁니다.
 
 ```properties
 DB_URL=jdbc:mysql://localhost:3306/catservice?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
