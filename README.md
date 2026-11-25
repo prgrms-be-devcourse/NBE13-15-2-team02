@@ -14,7 +14,7 @@
 | 단계       | 2차 프로젝트 (2026-11-23 ~ 2026-12-08), 기능 동결 12/4, 발표 12/8       |
 | 형태       | 화면 없는 REST API. Swagger UI와 Postman으로 호출 (웹 프론트엔드는 3차) |
 | 문서       | 이 README, Swagger UI (`/swagger-ui/index.html`)                        |
-| 기준일     | 2026-11-25, `dev` 브랜치 (PR #15까지 반영)                              |
+| 기준일     | 2026-11-25, `dev` 브랜치 (PR #18까지 반영)                              |
 
 > **구현 현황을 먼저 확인하세요.** 이 문서는 목표 설계 (명세서)와 현재 구현을 함께 담고 있습니다.
 > 각 표의 ✅는 구현됨, 🚧는 예정입니다. 자세한 내용은 [구현 현황](#구현-현황)에 있습니다.
@@ -583,7 +583,7 @@ score(고양이) = 3 × |성격 태그 겹침| + 2 × |외모 태그 겹침|
 |--------|------------------------------------|--------------------------------|---------------|------|
 | POST   | `/adoptions`                       | 입양 신청 (`catId`, `message`) | 로그인        | 🚧   |
 | GET    | `/adoptions/{adoptionId}`          | 신청 상세                      | 신청자·보호자 | 🚧   |
-| GET    | `/members/me/adoptions`            | 내가 보낸 신청                 | 로그인        | 🚧   |
+| GET    | `/members/me/adoptions`            | 내가 보낸 신청                 | 로그인        | ✅   |
 | GET    | `/members/me/adoptions/received`   | 내 고양이에 들어온 신청        | 로그인        | 🚧   |
 | PATCH  | `/adoptions/{adoptionId}/approve`  | 승인                           | 보호자        | 🚧   |
 | PATCH  | `/adoptions/{adoptionId}/reject`   | 거절                           | 보호자        | 🚧   |
@@ -811,6 +811,8 @@ JWT_SECRET=<32자 이상의 임의 문자열>
 | `AdoptionRequestStatusTest`      | 28   | 입양 신청 상태 전이: 허용된 전이, 허용되지 않은 전이, 끝난 상태, 진행 중 판별           |
 | `RecommendationScorerTest`       | 11   | 추천 점수: 명세서 계산 예, 가중치, 경계 케이스(겹침 없음, 빈 태그, 같은 이름·다른 종류) |
 | `AdoptionEventListenerTest`      | 5    | 이벤트 리스너: 삭제 막기, 남은 신청 거절 (Mockito)                                      |
+| `AdoptionResponseTest`           | 3    | 신청을 응답으로 변환: 모든 필드 옮김, 탈퇴한 회원은 "탈퇴한 회원"으로 표시              |
+| `AdoptionServiceTest`            | 3    | 내가 보낸 신청 목록: 응답 변환, 빈 목록, 페이지 정보 (Mockito)                          |
 | `Nbe13152Team02ApplicationTests` | 1    | 앱 컨텍스트 로딩                                                                        |
 
 단위 테스트는 스프링 없이 JUnit과 Mockito로 작성해 DB 없이 빠르게 돕니다.
@@ -867,18 +869,18 @@ dev   ◀── feat/*, fix/*, chore/*  (작업별 브랜치, PR로 통합)
 
 ## 구현 현황
 
-> 기준: `dev` 브랜치 (2026-11-25, PR #15까지). ✅ 완료, 🚧 예정
+> 기준: `dev` 브랜치 (2026-11-25, PR #18까지). ✅ 완료, 🚧 예정
 
-| 도메인       | ✅ 구현됨                                                                                                                 | 🚧 예정                                                              |
-|--------------|---------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
-| **global**   | 공통 응답(`ApiResponse`, `ErrorResponse`, `PageResponse`), 예외 처리, `BaseEntity`, JPA Auditing, Swagger 설정, 임시 인증 | JWT 발급·검증 필터, 401·403 핸들러, 권한 규칙                        |
-| **auth**     | 회원가입 API (입력 검증, 중복 검사 409, BCrypt 저장)                                                                      | 로그인, 토큰 재발급, 로그아웃, `RefreshToken`                        |
-| **member**   | `Member` 엔티티, repository, `MemberService`, 개발용 시드 회원                                                            | 내 정보 조회·수정·탈퇴, 프로필 조회                                  |
-| **tag**      | `Tag`, `TagType`, `MemberPreferredTag` 엔티티                                                                             | 서비스(정규화·조회·생성), 프리셋 시드(`data.sql`), 선호 태그 API     |
-| **cat**      | `Cat`, `CatTag`와 enum들, 입양 상태 전이 도메인 메서드, 이벤트 3종                                                        | `CatService`, repository, 고양이 API, `Cat.member` 연결              |
-| **post**     | `Post`, `PostTag`, `PostCategory`, 요청·응답 DTO, repository, 삭제 이벤트 수신                                            | 게시글 API(CRUD, 검색, 좋아요), `PostLike`                           |
-| **comment**  | -                                                                                                                         | 전체                                                                 |
-| **adoption** | 상태 전이 규칙, `AdoptionRequest` 엔티티와 repository, 요청·응답 DTO, 추천 점수 계산기, 이벤트 리스너                     | 입양 서비스·API(신청, 승인, 거절, 완료, 취소, 조회), 추천 서비스·API |
+| 도메인       | ✅ 구현됨                                                                                                                                                        | 🚧 예정                                                                              |
+|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| **global**   | 공통 응답(`ApiResponse`, `ErrorResponse`, `PageResponse`), 예외 처리, `BaseEntity`, JPA Auditing, Swagger 설정, 임시 인증                                        | JWT 발급·검증 필터, 401·403 핸들러, 권한 규칙                                        |
+| **auth**     | 회원가입 API (입력 검증, 중복 검사 409, BCrypt 저장)                                                                                                             | 로그인, 토큰 재발급, 로그아웃, `RefreshToken`                                        |
+| **member**   | `Member` 엔티티, repository, `MemberService`, 개발용 시드 회원                                                                                                   | 내 정보 조회·수정·탈퇴, 프로필 조회                                                  |
+| **tag**      | `Tag`, `TagType`, `MemberPreferredTag` 엔티티                                                                                                                    | 서비스(정규화·조회·생성), 프리셋 시드(`data.sql`), 선호 태그 API                     |
+| **cat**      | `Cat`, `CatTag`와 enum들, 입양 상태 전이 도메인 메서드, 이벤트 3종                                                                                               | `CatService`, repository, 고양이 API, `Cat.member` 연결                              |
+| **post**     | `Post`, `PostTag`, `PostCategory`, 요청·응답 DTO, repository, 삭제 이벤트 수신                                                                                   | 게시글 API(CRUD, 검색, 좋아요), `PostLike`                                           |
+| **comment**  | -                                                                                                                                                                | 전체                                                                                 |
+| **adoption** | 상태 전이 규칙, `AdoptionRequest` 엔티티와 repository, 요청·응답 DTO, 추천 점수 계산기, 이벤트 리스너, **내가 보낸 신청 목록 API** (`GET /members/me/adoptions`) | 입양 서비스·API(신청, 승인, 거절, 완료, 취소, 신청 상세, 받은 신청), 추천 서비스·API |
 
 ---
 
