@@ -3,11 +3,13 @@ package com.team02.catservice.adoption.service;
 import com.team02.catservice.adoption.dto.ScoreResult;
 import com.team02.catservice.adoption.dto.ScoringTag;
 import com.team02.catservice.tag.entity.TagType;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+@Component
 public class RecommendationScorer {
 
     /** [1] 태그 종류별 가중치. 성격이 외모보다 크다 (26.11.24/안형빈) */
