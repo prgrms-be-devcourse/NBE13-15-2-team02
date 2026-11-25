@@ -51,4 +51,9 @@ public enum AdoptionRequestStatus {
         }
         return targetStatus;
     }
+
+    /** [4] 진행 중 상태(REQUESTED, APPROVED)의 목록을 돌려준다. "진행 중" 기준의 유일한 출처로 쓴다 (26.11.24/안형빈) */
+    public static Set<AdoptionRequestStatus> getInProgressStatuses(){
+        return IN_PROGRESS_STATUSES;
+    }
 }
