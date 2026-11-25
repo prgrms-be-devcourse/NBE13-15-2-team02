@@ -901,14 +901,12 @@ dev   ◀── feat/*, fix/*, chore/*  (작업별 브랜치, PR로 통합)
 
 도메인별로 담당을 나눠 엔티티 소유자가 겹치지 않게 했습니다.
 
-| 담당 도메인          | GitHub                                                    | 주요 작업                                |
-|----------------------|-----------------------------------------------------------|------------------------------------------|
-| global, auth, member | [@DrugJangSu](https://github.com/DrugJangSu)              | `Member` 엔티티, 회원가입 API, 인증(JWT) |
-| post, comment        | [@hangyeol1103](https://github.com/hangyeol1103)          | `Post`, `PostTag`, 게시글·댓글 API       |
-| cat, tag             | [@minsungKing2](https://github.com/minsungKing2) (정민성) | `Cat`, `Tag`, 고양이·태그 API            |
-| adoption             | [@Achan-one](https://github.com/Achan-one) (안형빈)       | 입양 신청, 추천, 공통 코드 초기 구성     |
-
-> GitHub 아이디는 PR 작성자 기준입니다. 이름과 담당은 팀에서 확인해 수정해 주세요.
+| 담당 도메인          | GitHub                                           | 주요 작업                                |
+|----------------------|--------------------------------------------------|------------------------------------------|
+| global, auth, member | [@DrugJangSu](https://github.com/DrugJangSu)     | `Member` 엔티티, 회원가입 API, 인증(JWT) |
+| post, comment        | [@hangyeol1103](https://github.com/hangyeol1103) | `Post`, `PostTag`, 게시글·댓글 API       |
+| cat, tag             | [@minsungKing2](https://github.com/minsungKing2) | `Cat`, `Tag`, 고양이·태그 API            |
+| adoption             | [@Achan-one](https://github.com/Achan-one)       | 입양 신청, 추천, 공통 코드 초기 구성     |
 
 ---
 
