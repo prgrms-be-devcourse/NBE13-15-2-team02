@@ -2,7 +2,7 @@ package com.team02.catservice.adoption.service;
 
 import com.team02.catservice.adoption.dto.ScoreResult;
 import com.team02.catservice.adoption.dto.ScoringTag;
-import com.team02.catservice.adoption.dto.TagKind;
+import com.team02.catservice.tag.entity.TagType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,13 +27,13 @@ class RecommendationScorerTest {
             RecommendationScorer recommendationScorer = new RecommendationScorer();
 
             Set<ScoringTag> preferredTags = new HashSet<>();
-            preferredTags.add(new ScoringTag("개냥이", TagKind.PERSONALITY));
-            preferredTags.add(new ScoringTag("얌전함", TagKind.PERSONALITY));
-            preferredTags.add(new ScoringTag("장모", TagKind.APPEARANCE));
+            preferredTags.add(new ScoringTag("개냥이", TagType.PERSONALITY));
+            preferredTags.add(new ScoringTag("얌전함", TagType.PERSONALITY));
+            preferredTags.add(new ScoringTag("장모", TagType.APPEARANCE));
 
             Set<ScoringTag> catTags = new HashSet<>();
-            catTags.add(new ScoringTag("개냥이", TagKind.PERSONALITY));
-            catTags.add(new ScoringTag("얌전함", TagKind.PERSONALITY));
+            catTags.add(new ScoringTag("개냥이", TagType.PERSONALITY));
+            catTags.add(new ScoringTag("얌전함", TagType.PERSONALITY));
 
             ScoreResult result = recommendationScorer.calculate(preferredTags, catTags);
 
@@ -47,13 +47,13 @@ class RecommendationScorerTest {
             RecommendationScorer recommendationScorer = new RecommendationScorer();
 
             Set<ScoringTag> preferredTags = new HashSet<>();
-            preferredTags.add(new ScoringTag("개냥이", TagKind.PERSONALITY));
-            preferredTags.add(new ScoringTag("얌전함", TagKind.PERSONALITY));
-            preferredTags.add(new ScoringTag("장모", TagKind.APPEARANCE));
+            preferredTags.add(new ScoringTag("개냥이", TagType.PERSONALITY));
+            preferredTags.add(new ScoringTag("얌전함", TagType.PERSONALITY));
+            preferredTags.add(new ScoringTag("장모", TagType.APPEARANCE));
 
             Set<ScoringTag> catTags = new HashSet<>();
-            catTags.add(new ScoringTag("개냥이", TagKind.PERSONALITY));
-            catTags.add(new ScoringTag("장모", TagKind.APPEARANCE));
+            catTags.add(new ScoringTag("개냥이", TagType.PERSONALITY));
+            catTags.add(new ScoringTag("장모", TagType.APPEARANCE));
 
             ScoreResult result = recommendationScorer.calculate(preferredTags, catTags);
 
@@ -172,14 +172,14 @@ class RecommendationScorerTest {
     }
 
     private ScoringTag personality(String name) {
-        return new ScoringTag(name, TagKind.PERSONALITY);
+        return new ScoringTag(name, TagType.PERSONALITY);
     }
 
     private ScoringTag appearance(String name) {
-        return new ScoringTag(name, TagKind.APPEARANCE);
+        return new ScoringTag(name, TagType.APPEARANCE);
     }
 
     private ScoringTag free(String name) {
-        return new ScoringTag(name, TagKind.FREE);
+        return new ScoringTag(name, TagType.FREE);
     }
 }

@@ -4,6 +4,7 @@ import com.team02.catservice.adoption.entity.AdoptionRequest;
 import com.team02.catservice.adoption.entity.AdoptionRequestStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
@@ -18,6 +19,7 @@ public interface AdoptionRequestRepository extends JpaRepository<AdoptionRequest
     );
 
     /** [2] 내가 보낸 신청 목록을 페이징해서 조회한다 (26.11.24/안형빈) */
+    @EntityGraph(attributePaths = {"cat", "applicant"})
     Page<AdoptionRequest> findByApplicantId(
             Long applicantId,
             Pageable pageable
