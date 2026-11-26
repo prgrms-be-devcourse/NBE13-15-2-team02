@@ -42,6 +42,7 @@ public enum ErrorCode {
     // 409
     DUPLICATE_LOGIN_ID(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
     DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
+    DUPLICATE_ADOPTION_REQUEST(HttpStatus.CONFLICT, "이미 신청한 고양이입니다."),
     ALREADY_LIKED(HttpStatus.CONFLICT, "이미 좋아요를 누른 글입니다."),
     INVALID_ADOPTION_STATUS(HttpStatus.CONFLICT, "현재 상태에서는 처리할 수 없는 입양 요청입니다."),
 
