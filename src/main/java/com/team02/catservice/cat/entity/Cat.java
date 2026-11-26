@@ -3,6 +3,7 @@ package com.team02.catservice.cat.entity;
 import com.team02.catservice.global.entity.BaseEntity;
 import com.team02.catservice.global.exception.BusinessException;
 import com.team02.catservice.global.exception.ErrorCode;
+import com.team02.catservice.member.entity.Member;
 import com.team02.catservice.tag.entity.Tag;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -14,7 +15,7 @@ import java.time.Year;
 import java.util.*;
 
 @Entity
-//@Table(name = "cat")
+@Table(name = "cat")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Cat extends BaseEntity {
@@ -22,9 +23,9 @@ public class Cat extends BaseEntity {
     public static final int MAX_TAG_COUNT = 10;
 
     // 고양이 등록자 및 보호자 N:1
-//    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-//    @JoinColumn(name = "member_id", nullable = false)
-//    private Member member;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "member_id", nullable = false)
+    private Member member;
 
     @Column(nullable = false, length = 30)
     private String name;
@@ -68,7 +69,6 @@ public class Cat extends BaseEntity {
     @OneToMany(mappedBy = "cat", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CatTag> catTags = new ArrayList<>();
 
-    /*
     @Builder // 빌더 패턴 방식
     private Cat(Member member, String name, CatType type, Breed breed, Gender gender, Integer birthYear,
                 Neutered neutered, String description, String imageUrl) {
@@ -83,13 +83,13 @@ public class Cat extends BaseEntity {
         this.description = description;
         this.imageUrl = imageUrl;
     }
-    */
 
     // - 조회 편의 메서드 -
 
-    /*public boolean isOwnedBy(Long memberId) {
+    // 소유자인지
+    public boolean isOwnedBy(Long memberId) {
         return member.getId().equals(memberId);
-    }*/
+    }
 
     // 나이
     public Integer getAge() {
