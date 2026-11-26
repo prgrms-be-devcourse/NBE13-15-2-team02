@@ -8,7 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-/*
 @Table(
         name = "cat_tag",
         uniqueConstraints =  @UniqueConstraint(
@@ -16,17 +15,16 @@ import lombok.NoArgsConstructor;
                 columnNames = {"cat_id", "tag_id"}
         )
 )
-*/
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CatTag extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-//    @JoinColumn(name = "cat_id", nullable = false)
+    @JoinColumn(name = "cat_id", nullable = false)
     private Cat cat;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-//    @JoinCTagmn(name = "tag_id", nullable = false)
+    @JoinColumn(name = "tag_id", nullable = false)
     private Tag tag;
 
     private CatTag(Cat cat, Tag tag) {
