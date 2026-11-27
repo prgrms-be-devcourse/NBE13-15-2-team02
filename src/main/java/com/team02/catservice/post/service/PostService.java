@@ -61,7 +61,7 @@ public class PostService {
     }
 
     @Transactional
-    public PostResponse updatePost(Long memberId, Long postId, PostUpdateRequest request){
+    public PostResponse updatePost(Long postId, Long memberId, PostUpdateRequest request){
         Post post = getPost(postId);
 
         if (!post.getMember().getId().equals(memberId)){
