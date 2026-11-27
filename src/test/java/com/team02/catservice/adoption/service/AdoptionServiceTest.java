@@ -13,6 +13,7 @@ import com.team02.catservice.global.exception.ErrorCode;
 import com.team02.catservice.global.response.PageResponse;
 import com.team02.catservice.member.entity.Member;
 import com.team02.catservice.member.service.MemberService;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -24,8 +25,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,6 +37,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -212,5 +216,293 @@ class AdoptionServiceTest {
                     .isEqualTo(ErrorCode.DUPLICATE_ADOPTION_REQUEST);
             verify(adoptionRequestRepository, never()).save(any(AdoptionRequest.class));
         }
+    }
+
+    @Nested
+    @DisplayName("입양 승인 (approveAdoption)")
+    class ApproveAdoption {
+
+        @Test
+        @DisplayName("보호자가 승인하면 신청은 APPROVED가 되고 고양이는 예약 처리된다")
+        void approves_and_reserves_cat() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(2L)).thenReturn(true);
+            when(cat.getId()).thenReturn(10L);
+            AdoptionRequest request = requestOf(cat, 1L);
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            AdoptionResponse response = adoptionService.approveAdoption(2L, 5L);
+
+            assertThat(request.getStatus()).isEqualTo(AdoptionRequestStatus.APPROVED);
+            assertThat(response.status()).isEqualTo(AdoptionRequestStatus.APPROVED);
+            verify(catService).markReserved(10L);
+        }
+
+        @Test
+        @DisplayName("신청이 없으면 ADOPTION_NOT_FOUND 예외가 발생한다")
+        void fails_when_request_not_found() {
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.empty());
+
+            assertErrorCode(() -> adoptionService.approveAdoption(2L, 5L), ErrorCode.ADOPTION_NOT_FOUND);
+            verifyNoInteractions(catService);
+        }
+
+        @Test
+        @DisplayName("보호자가 아니면 FORBIDDEN 예외가 발생하고 상태는 그대로다")
+        void fails_when_not_owner() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(3L)).thenReturn(false);
+            AdoptionRequest request = requestOf(cat, 1L);
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            assertErrorCode(() -> adoptionService.approveAdoption(3L, 5L), ErrorCode.FORBIDDEN);
+            assertThat(request.getStatus()).isEqualTo(AdoptionRequestStatus.REQUESTED);
+            verifyNoInteractions(catService);
+        }
+
+        @Test
+        @DisplayName("이미 끝난 신청이면 INVALID_ADOPTION_STATUS 예외가 발생하고 고양이를 건드리지 않는다")
+        void fails_when_already_finished() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(2L)).thenReturn(true);
+            AdoptionRequest request = requestOf(cat, 1L);
+            request.reject();
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            assertErrorCode(() -> adoptionService.approveAdoption(2L, 5L), ErrorCode.INVALID_ADOPTION_STATUS);
+            verifyNoInteractions(catService);
+        }
+    }
+
+    @Nested
+    @DisplayName("입양 거절 (rejectAdoption)")
+    class RejectAdoption {
+
+        @Test
+        @DisplayName("승인된 신청을 거절하면 REJECTED가 되고 고양이는 다시 입양 가능으로 돌아간다")
+        void rejects_approved_and_releases_cat() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(2L)).thenReturn(true);
+            when(cat.getId()).thenReturn(10L);
+            AdoptionRequest request = requestOf(cat, 1L);
+            request.approve();
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            AdoptionResponse response = adoptionService.rejectAdoption(2L, 5L);
+
+            assertThat(request.getStatus()).isEqualTo(AdoptionRequestStatus.REJECTED);
+            assertThat(response.status()).isEqualTo(AdoptionRequestStatus.REJECTED);
+            verify(catService).markAvailable(10L);
+        }
+
+        @Test
+        @DisplayName("승인 전(REQUESTED) 신청을 거절하면 REJECTED가 되고 고양이는 건드리지 않는다")
+        void rejects_requested_without_touching_cat() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(2L)).thenReturn(true);
+            AdoptionRequest request = requestOf(cat, 1L);
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            adoptionService.rejectAdoption(2L, 5L);
+
+            assertThat(request.getStatus()).isEqualTo(AdoptionRequestStatus.REJECTED);
+            verifyNoInteractions(catService);
+        }
+
+        @Test
+        @DisplayName("이미 끝난 신청이면 INVALID_ADOPTION_STATUS 예외가 발생하고 고양이를 건드리지 않는다")
+        void fails_when_already_finished() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(2L)).thenReturn(true);
+            AdoptionRequest request = requestOf(cat, 1L);
+            request.cancel();
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            assertErrorCode(() -> adoptionService.rejectAdoption(2L, 5L), ErrorCode.INVALID_ADOPTION_STATUS);
+            verifyNoInteractions(catService);
+        }
+
+        @Test
+        @DisplayName("보호자가 아니면 FORBIDDEN 예외가 발생하고 상태는 그대로다")
+        void fails_when_not_owner() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(3L)).thenReturn(false);
+            AdoptionRequest request = requestOf(cat, 1L);
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            assertErrorCode(() -> adoptionService.rejectAdoption(3L, 5L), ErrorCode.FORBIDDEN);
+            assertThat(request.getStatus()).isEqualTo(AdoptionRequestStatus.REQUESTED);
+            verifyNoInteractions(catService);
+        }
+
+        @Test
+        @DisplayName("신청이 없으면 ADOPTION_NOT_FOUND 예외가 발생한다")
+        void fails_when_request_not_found() {
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.empty());
+
+            assertErrorCode(() -> adoptionService.rejectAdoption(2L, 5L), ErrorCode.ADOPTION_NOT_FOUND);
+            verifyNoInteractions(catService);
+        }
+    }
+
+    @Nested
+    @DisplayName("입양 완료 (completeAdoption)")
+    class CompleteAdoption {
+
+        @Test
+        @DisplayName("승인된 신청을 완료하면 COMPLETED가 되고 고양이는 입양 완료 처리되며 남은 신청은 거절된다")
+        void completes_and_rejects_waiting_requests() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(2L)).thenReturn(true);
+            when(cat.getId()).thenReturn(10L);
+            AdoptionRequest request = requestOf(cat, 1L);
+            request.approve();
+            AdoptionRequest waiting = requestOf(cat, 3L);
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+            when(adoptionRequestRepository.findByCatIdAndStatus(10L, AdoptionRequestStatus.REQUESTED))
+                    .thenReturn(List.of(waiting));
+
+            AdoptionResponse response = adoptionService.completeAdoption(2L, 5L);
+
+            assertThat(request.getStatus()).isEqualTo(AdoptionRequestStatus.COMPLETED);
+            assertThat(response.status()).isEqualTo(AdoptionRequestStatus.COMPLETED);
+            assertThat(waiting.getStatus()).isEqualTo(AdoptionRequestStatus.REJECTED);
+            verify(catService).markAdopted(10L);
+        }
+
+        @Test
+        @DisplayName("남은 신청이 없어도 완료 처리된다")
+        void completes_when_no_waiting_requests() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(2L)).thenReturn(true);
+            when(cat.getId()).thenReturn(10L);
+            AdoptionRequest request = requestOf(cat, 1L);
+            request.approve();
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+            when(adoptionRequestRepository.findByCatIdAndStatus(10L, AdoptionRequestStatus.REQUESTED))
+                    .thenReturn(List.of());
+
+            adoptionService.completeAdoption(2L, 5L);
+
+            assertThat(request.getStatus()).isEqualTo(AdoptionRequestStatus.COMPLETED);
+            verify(catService).markAdopted(10L);
+        }
+
+        @Test
+        @DisplayName("승인되지 않은 신청이면 INVALID_ADOPTION_STATUS 예외가 발생하고 아무것도 바꾸지 않는다")
+        void fails_when_not_approved() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(2L)).thenReturn(true);
+            AdoptionRequest request = requestOf(cat, 1L);
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            assertErrorCode(() -> adoptionService.completeAdoption(2L, 5L), ErrorCode.INVALID_ADOPTION_STATUS);
+            verifyNoInteractions(catService);
+            verify(adoptionRequestRepository, never()).findByCatIdAndStatus(any(), any());
+        }
+
+        @Test
+        @DisplayName("보호자가 아니면 FORBIDDEN 예외가 발생하고 상태는 그대로다")
+        void fails_when_not_owner() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(3L)).thenReturn(false);
+            AdoptionRequest request = requestOf(cat, 1L);
+            request.approve();
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            assertErrorCode(() -> adoptionService.completeAdoption(3L, 5L), ErrorCode.FORBIDDEN);
+            assertThat(request.getStatus()).isEqualTo(AdoptionRequestStatus.APPROVED);
+            verifyNoInteractions(catService);
+        }
+
+        @Test
+        @DisplayName("신청이 없으면 ADOPTION_NOT_FOUND 예외가 발생한다")
+        void fails_when_request_not_found() {
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.empty());
+
+            assertErrorCode(() -> adoptionService.completeAdoption(2L, 5L), ErrorCode.ADOPTION_NOT_FOUND);
+            verifyNoInteractions(catService);
+        }
+    }
+
+    @Nested
+    @DisplayName("입양 신청 취소 (cancelAdoption)")
+    class CancelAdoption {
+
+        @Test
+        @DisplayName("승인된 신청을 취소하면 CANCELED가 되고 고양이는 다시 입양 가능으로 돌아간다")
+        void cancels_approved_and_releases_cat() {
+            Cat cat = mock(Cat.class);
+            when(cat.getId()).thenReturn(10L);
+            AdoptionRequest request = requestOf(cat, 1L);
+            request.approve();
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            AdoptionResponse response = adoptionService.cancelAdoption(1L, 5L);
+
+            assertThat(request.getStatus()).isEqualTo(AdoptionRequestStatus.CANCELED);
+            assertThat(response.status()).isEqualTo(AdoptionRequestStatus.CANCELED);
+            verify(catService).markAvailable(10L);
+        }
+
+        @Test
+        @DisplayName("승인 전(REQUESTED) 신청을 취소하면 CANCELED가 되고 고양이는 건드리지 않는다")
+        void cancels_requested_without_touching_cat() {
+            Cat cat = mock(Cat.class);
+            AdoptionRequest request = requestOf(cat, 1L);
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            adoptionService.cancelAdoption(1L, 5L);
+
+            assertThat(request.getStatus()).isEqualTo(AdoptionRequestStatus.CANCELED);
+            verifyNoInteractions(catService);
+        }
+
+        @Test
+        @DisplayName("입양 완료된 신청은 취소할 수 없다 (INVALID_ADOPTION_STATUS)")
+        void fails_when_completed() {
+            Cat cat = mock(Cat.class);
+            AdoptionRequest request = requestOf(cat, 1L);
+            request.approve();
+            request.complete();
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            assertErrorCode(() -> adoptionService.cancelAdoption(1L, 5L), ErrorCode.INVALID_ADOPTION_STATUS);
+            verifyNoInteractions(catService);
+        }
+
+        @Test
+        @DisplayName("신청자가 아니면 FORBIDDEN 예외가 발생하고 상태는 그대로다")
+        void fails_when_not_applicant() {
+            Cat cat = mock(Cat.class);
+            AdoptionRequest request = requestOf(cat, 1L);
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            assertErrorCode(() -> adoptionService.cancelAdoption(3L, 5L), ErrorCode.FORBIDDEN);
+            assertThat(request.getStatus()).isEqualTo(AdoptionRequestStatus.REQUESTED);
+            verifyNoInteractions(catService);
+        }
+
+        @Test
+        @DisplayName("신청이 없으면 ADOPTION_NOT_FOUND 예외가 발생한다")
+        void fails_when_request_not_found() {
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.empty());
+
+            assertErrorCode(() -> adoptionService.cancelAdoption(1L, 5L), ErrorCode.ADOPTION_NOT_FOUND);
+            verifyNoInteractions(catService);
+        }
+    }
+
+    private AdoptionRequest requestOf(Cat cat, Long applicantId) {
+        Member applicant = new Member("login", "pw", "nickname");
+        ReflectionTestUtils.setField(applicant, "id", applicantId);
+        return new AdoptionRequest(cat, applicant, "사유");
+    }
+
+    private void assertErrorCode(ThrowingCallable callable, ErrorCode errorCode) {
+        assertThatThrownBy(callable)
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(errorCode);
     }
 }
