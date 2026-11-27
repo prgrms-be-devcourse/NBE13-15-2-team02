@@ -106,10 +106,105 @@ X-Dev-Member-Id: 1
 
 ###
 # ---------------------------------------------------------------------------
-# 아래는 아직 구현하지 않은 API다. 요청은 주석으로 막아 두었다.
-# 구현이 끝나면 주석(#)을 풀고 "[미구현]" 표시를 지운다.
+# 추천 API 확인 ([21]~[36]). 위의 입양 흐름([1]~[20])과 따로 실행한다.
+# 선호 태그(장모=외모, 개냥이=성격)를 가진 회원 1에게 겹치는 정도가 다른 고양이 세 마리를 추천받는다.
+#   고양이 C(개냥이, 장모) 5점 > 고양이 A(개냥이) 3점 > 고양이 B(장모) 2점
+# 프리셋 태그 번호는 data.sql 순서대로 장모=1, 개냥이=7이다. 다르면 [21]로 확인해서 [22]의 tagIds를 고친다.
+# DB에 이미 입양 가능한 다른 고양이가 있으면 목록에 함께 나올 수 있다.
 # ---------------------------------------------------------------------------
 
-### [미구현] 추천 고양이 목록 (회원 1)
-# GET http://{{host}}/api/v1/adoptions/recommendations
-# X-Dev-Member-Id: 1
+### [21] 프리셋 태그 번호 확인 - 200, 12개 (외모 6, 성격 6)
+GET http://{{host}}/api/v1/tags?size=20
+
+### [22] 선호 태그 설정 (회원 1) - 200, 장모와 개냥이
+PUT http://{{host}}/api/v1/members/me/preferred-tags
+Content-Type: application/json
+X-Dev-Member-Id: 1
+
+{ "tagIds": [1, 7] }
+
+### [23] 고양이 A 등록 (보호자 2, 태그 개냥이) - 201, catId를 rc_a로 저장
+POST http://{{host}}/api/v1/cats
+Content-Type: application/json
+X-Dev-Member-Id: 2
+
+{ "name": "추천A", "type": "PET", "tags": ["개냥이"] }
+
+> {% client.global.set("rc_a", response.body.data.catId); %}
+
+### [24] 고양이 B 등록 (보호자 2, 태그 장모) - 201, catId를 rc_b로 저장
+POST http://{{host}}/api/v1/cats
+Content-Type: application/json
+X-Dev-Member-Id: 2
+
+{ "name": "추천B", "type": "PET", "tags": ["장모"] }
+
+> {% client.global.set("rc_b", response.body.data.catId); %}
+
+### [25] 고양이 C 등록 (보호자 2, 태그 개냥이와 장모) - 201, catId를 rc_c로 저장
+POST http://{{host}}/api/v1/cats
+Content-Type: application/json
+X-Dev-Member-Id: 2
+
+{ "name": "추천C", "type": "PET", "tags": ["개냥이", "장모"] }
+
+> {% client.global.set("rc_c", response.body.data.catId); %}
+
+### [26] 고양이 A 공고 열기 (보호자 2) - 200, AVAILABLE
+PATCH http://{{host}}/api/v1/cats/{{rc_a}}/adoption-status
+Content-Type: application/json
+X-Dev-Member-Id: 2
+
+{ "adoptionStatus": "AVAILABLE" }
+
+### [27] 고양이 B 공고 열기 (보호자 2) - 200, AVAILABLE
+PATCH http://{{host}}/api/v1/cats/{{rc_b}}/adoption-status
+Content-Type: application/json
+X-Dev-Member-Id: 2
+
+{ "adoptionStatus": "AVAILABLE" }
+
+### [28] 고양이 C 공고 열기 (보호자 2) - 200, AVAILABLE
+PATCH http://{{host}}/api/v1/cats/{{rc_c}}/adoption-status
+Content-Type: application/json
+X-Dev-Member-Id: 2
+
+{ "adoptionStatus": "AVAILABLE" }
+
+### [29] 추천 목록 (회원 1) - 200, 추천C(5점, 개냥이·장모) > 추천A(3점) > 추천B(2점)
+GET http://{{host}}/api/v1/adoptions/recommendations
+X-Dev-Member-Id: 1
+
+### [30] 추천 목록 size=2 (회원 1) - 200, 2마리만
+GET http://{{host}}/api/v1/adoptions/recommendations?size=2
+X-Dev-Member-Id: 1
+
+### [31] 추천C에 입양 신청 (회원 1) - 201
+POST http://{{host}}/api/v1/adoptions
+Content-Type: application/json
+X-Dev-Member-Id: 1
+
+{ "catId": {{rc_c}}, "message": "추천받고 신청해요" }
+
+### [32] 추천 목록 다시 (회원 1) - 200, 신청한 추천C가 빠짐
+GET http://{{host}}/api/v1/adoptions/recommendations
+X-Dev-Member-Id: 1
+
+### [33] 선호 태그 비우기 (회원 1) - 200, 빈 목록
+PUT http://{{host}}/api/v1/members/me/preferred-tags
+Content-Type: application/json
+X-Dev-Member-Id: 1
+
+{ "tagIds": [] }
+
+### [34] 선호 태그 없이 추천 (회원 1) - 200, 모두 0점으로 최근 등록순, message에 선호 태그 설정 안내
+GET http://{{host}}/api/v1/adoptions/recommendations
+X-Dev-Member-Id: 1
+
+### [35] size가 0 (회원 1) - 400
+GET http://{{host}}/api/v1/adoptions/recommendations?size=0
+X-Dev-Member-Id: 1
+
+### [36] size가 51 (회원 1) - 400
+GET http://{{host}}/api/v1/adoptions/recommendations?size=51
+X-Dev-Member-Id: 1
