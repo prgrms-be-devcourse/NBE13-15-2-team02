@@ -62,7 +62,7 @@ public class CatService {
      * 생긴 id로 cat_tag.cat_id를 채운다.
      */
     @Transactional
-    public CatResponse creatCat(Long memberId, CatCreateRequest request) {
+    public CatResponse createCat(Long memberId, CatCreateRequest request) {
         validateBirthYear(request.birthYear()); // 추정 출생연도 검증
         Member member = memberService.getMember(memberId);
 
