@@ -3,6 +3,7 @@ package com.team02.catservice.post.controller;
 import com.team02.catservice.global.response.ApiResponse;
 import com.team02.catservice.post.dto.PostCreateRequest;
 import com.team02.catservice.post.dto.PostResponse;
+import com.team02.catservice.post.entity.Post;
 import com.team02.catservice.post.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,12 @@ public class PostController {
     public ApiResponse<PostResponse> create(@AuthenticationPrincipal Long memberId, @Valid @RequestBody PostCreateRequest request){
         PostResponse response = this.postService.create(memberId, request);
         return ApiResponse.created("게시글을 작성했습니다.", response);
+    }
+
+    @GetMapping("/{postId}")
+    public ApiResponse<PostResponse> search(@PathVariable Long postId){
+        PostResponse response = this.postService.getPostDetail(postId);
+        return ApiResponse.ok("게시글을 조회했습니다.", response);
     }
 
 }

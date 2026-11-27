@@ -2,6 +2,9 @@ package com.team02.catservice.post.service;
 
 import com.team02.catservice.cat.entity.Cat;
 import com.team02.catservice.cat.service.CatService;
+import com.team02.catservice.global.exception.BusinessException;
+import com.team02.catservice.global.exception.ErrorCode;
+import com.team02.catservice.global.exception.GlobalExceptionHandler;
 import com.team02.catservice.member.entity.Member;
 import com.team02.catservice.member.service.MemberService;
 import com.team02.catservice.post.dto.PostCreateRequest;
@@ -27,7 +30,7 @@ public class PostService {
 
 
     @Transactional
-    public PostResponse create(Long memberId,PostCreateRequest request){
+    public PostResponse create(Long memberId,PostCreateRequest request) {
         Member member = this.memberService.getMember(memberId);
 
         Cat cat = request.catId() == null ? null : this.catService.getCat(request.catId());
@@ -42,6 +45,17 @@ public class PostService {
 
         postRepository.save(post);
 
+        return PostResponse.from(post);
+    }
+
+    @Transactional(readOnly = true)
+    public Post getPost(Long postId){
+        return postRepository.findById(postId).orElseThrow(()-> new BusinessException(ErrorCode.POST_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    public PostResponse getPostDetail(Long postId){
+        Post post = getPost(postId);
         return PostResponse.from(post);
     }
 
