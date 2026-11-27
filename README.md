@@ -145,7 +145,7 @@
 **Infra & Collaboration**  
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white) ![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white) ![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)
 
-> JWT는 의존성 (jjwt)과 설계는 갖춰져 있고 인증 필터는 구현 예정입니다. 자세한 구성은 [인증과 보안](#인증과-보안)을 참고하세요.
+> JWT 인증이 적용되어 있습니다. (로그인 시 토큰 발급, 요청마다 필터에서 검증) 자세한 구성은 [인증과 보안](#인증과-보안)을 참고하세요.
 
 상세 버전과 용도는 아래 표와 같습니다.
 
@@ -154,7 +154,7 @@
 | 언어       | Java 21                                      | Gradle Toolchain으로 고정                     |
 | 프레임워크 | Spring Boot 4.1.2                            | Spring MVC, Spring Data JPA, Bean Validation  |
 | ORM        | Hibernate (JPA)                              | 엔티티 `BaseEntity` 상속, 감사(Auditing) 적용 |
-| 보안       | Spring Security, jjwt 0.13.0                 | BCrypt 비밀번호 해시. JWT 인증은 구현 예정    |
+| 보안       | Spring Security, jjwt 0.13.0                 | BCrypt 비밀번호 해시, JWT 인증 필터    |
 | DB         | MySQL                                        | 로컬 개발은 `mysql:8.4` Docker 이미지로 검증  |
 | API 문서   | springdoc-openapi 3.2.0                      | Swagger UI 자동 생성                          |
 | 빌드       | Gradle (Wrapper)                             | `./gradlew`                                   |
@@ -204,7 +204,7 @@ src/main/java/com/team02/catservice
 ├── Nbe13152Team02Application.java
 ├── global                      공통 코드
 │   ├── config                  SecurityConfig, SwaggerConfig, JpaAuditingConfig
-│   ├── security                SecurityUtil, JwtTokenProvider, TemporaryAuthFilter (JWT 검증 필터는 예정)
+│   ├── security                SecurityUtil, JwtTokenProvider, JwtAuthenticationFilter, JwtAuthenticationEntryPoint(401), JwtAccessDeniedHandler(403)
 │   ├── exception               ErrorCode, BusinessException, GlobalExceptionHandler
 │   ├── response                ApiResponse, ErrorResponse, PageResponse
 │   └── entity                  BaseEntity (id, createdAt, updatedAt)
@@ -679,12 +679,12 @@ score(고양이) = 3 × |성격 태그 겹침| + 2 × |외모 태그 겹침|
 | 항목         | 방식                                                                              | 상태 |
 |--------------|-----------------------------------------------------------------------------------|------|
 | 로그인       | 아이디와 비밀번호를 확인한 뒤 Access Token(30분)과 Refresh Token(14일) 발급       | ✅   |
-| 요청 인증    | `Authorization: Bearer` 헤더의 Access Token을 필터에서 검증                       | 🚧   |
+| 요청 인증    | `Authorization: Bearer` 헤더의 Access Token을 필터에서 검증                       | ✅   |
 | 토큰 재발급  | Refresh Token을 DB에 저장하고 재발급할 때마다 새 값으로 교체, 로그아웃하면 삭제   | 🚧   |
 | 비밀번호     | BCrypt로 해시해 저장 (비밀번호는 영문, 숫자, 특수문자 8~72자)                     | ✅   |
 | 입력 검증    | Bean Validation으로 요청 값을 검증하고 실패하면 400                               | ✅   |
 | 비밀 값      | JWT 서명 키, DB 비밀번호, 외부 API 키는 환경 변수로 주입하고 저장소에 올리지 않음 | ✅   |
-| 401·403 응답 | `AuthenticationEntryPoint`, `AccessDeniedHandler`에서 같은 에러 포맷으로 응답     | 🚧   |
+| 401·403 응답 | `AuthenticationEntryPoint`, `AccessDeniedHandler`에서 같은 에러 포맷으로 응답     | ✅   |
 
 **권한은 '누구의 것인가'로 나눕니다.**
 
@@ -697,9 +697,9 @@ score(고양이) = 3 × |성격 태그 겹침| + 2 × |외모 태그 겹침|
 | 입양 승인, 거절, 완료          | 그 고양이의 보호자 |
 | 입양 신청 취소                 | 신청자             |
 
-> **로그인 API는 구현됐지만 토큰을 검증하는 필터가 아직 없어서, 개발용 임시 인증을 씁니다.**
-> `TemporaryAuthFilter`가 모든 요청을 **회원 ID 1**로 인증하고, `X-Dev-Member-Id` 헤더로 다른 회원 ID를 흉내 낼 수 있습니다.
-> `SecurityConfig`도 임시로 전체 허용 상태입니다. **JWT 필터 적용 시 이 둘을 교체해야 하며, 이 상태로 배포해서는 안 됩니다.**
+> **로그인이 필요한 API는 `Authorization: Bearer {Access Token}` 헤더로 인증합니다.**
+> 토큰이 없거나 틀리면 401(`UNAUTHORIZED`, `INVALID_TOKEN`, `TOKEN_EXPIRED`), 권한이 없으면 403으로 응답합니다.
+> 조회(GET)는 기본 공개이고, `/members/me/**`와 `/adoptions/**` 조회는 로그인이 필요합니다.
 > 로그인한 회원 ID는 코드에서 항상 `SecurityUtil.getCurrentMemberId()`로 꺼냅니다.
 
 ---
@@ -780,12 +780,12 @@ JWT_SECRET=<32자 이상의 임의 문자열>
 | Swagger UI         | http://localhost:8080/swagger-ui/index.html |
 | OpenAPI 명세(JSON) | http://localhost:8080/v3/api-docs           |
 
-여러 요청을 순서대로 이어서 확인하거나 `X-Dev-Member-Id` 헤더로 다른 회원 입장에서 호출할 때는 IntelliJ HTTP 클라이언트 파일 `http/`를 씁니다. 쓰는 법과 규칙은 [`http/README.md`](http/README.md)에 있습니다. (Swagger UI에서는 이 임시 헤더를 넣을 칸이 없어 항상 회원 1로 호출됩니다)
+Swagger UI에서는 `POST /api/v1/auth/login`으로 받은 Access Token을 오른쪽 위 **Authorize** 버튼에 넣고 호출합니다. 여러 요청을 순서대로 이어서 확인하거나 다른 회원 입장에서 호출할 때는 IntelliJ HTTP 클라이언트 파일 `http/`를 씁니다. `http/auth.http`를 먼저 실행하면 회원 1~3의 토큰이 저장됩니다. 쓰는 법과 규칙은 [`http/README.md`](http/README.md)에 있습니다.
 
 ### 개발용 데이터
 
 - 앱이 시작될 때 회원이 한 명도 없으면 `MemberSeedRunner`가 **테스트 회원 2명**(id 1, 2)을 만듭니다. (개발 전용, 계정 정보는 `MemberSeedRunner` 참고)
-- 임시 인증의 기본 회원이 id 1이므로 앱 실행 직후부터 로그인 필요 API를 호출할 수 있고, 다른 사람 입장은 `X-Dev-Member-Id: 2` 헤더로 흉내 냅니다.
+- 로그인 필요 API는 테스트 회원으로 로그인해서 받은 토큰으로 호출합니다. (`http/auth.http` 또는 Swagger의 Authorize)
 
 ### 자주 겪는 문제
 
@@ -879,7 +879,7 @@ dev   ◀── feat/*, fix/*, chore/*  (작업별 브랜치, PR로 통합)
 
 | 도메인       | ✅ 구현됨                                                                                                                                                                                                                                                                                                                            | 🚧 예정                                                |
 |--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------|
-| **global**   | 공통 응답(`ApiResponse`, `ErrorResponse`, `PageResponse`), 예외 처리, `BaseEntity`, JPA Auditing, Swagger 설정, 임시 인증, JWT 생성기(`JwtTokenProvider`)                                                                                                                                                                            | JWT 검증 필터, 401·403 핸들러, 권한 규칙               |
+| **global**   | 공통 응답(`ApiResponse`, `ErrorResponse`, `PageResponse`), 예외 처리, `BaseEntity`, JPA Auditing, Swagger 설정, JWT 생성·검증(`JwtTokenProvider`), 인증 필터, 401·403 핸들러, 주소별 권한 규칙                                                                                                                                       | -                                                      |
 | **auth**     | 회원가입 API (입력 검증, 중복 검사 409, BCrypt 저장), 로그인 API (Access·Refresh Token 발급), `RefreshToken` 엔티티 (회원당 1개, 재로그인 시 교체)                                                                                                                                                                                   | 토큰 재발급, 로그아웃                                  |
 | **member**   | `Member` 엔티티, repository, `MemberService`(조회, 가입, 로그인 확인), 개발용 시드 회원                                                                                                                                                                                                                                              | 내 정보 조회·수정·탈퇴, 프로필 조회                    |
 | **tag**      | `Tag`, `TagType`, `MemberPreferredTag` 엔티티, `TagService`(정규화·조회·생성), `PreferredTagService`(선호 태그 조회·교체), repository, DTO                                                                                                                                                                                           | 프리셋 시드(`data.sql`), 태그 API, 선호 태그 API       |
