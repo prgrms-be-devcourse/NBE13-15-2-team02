@@ -10,11 +10,19 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+    defer-datasource-initialization: true # Hibernate가 테이블을 만든 뒤에 data.sql 실행
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100 # 목록 조회 시 회원·태그를 IN 쿼리로 묶어서 조회 (N+1방지)
   data:
     web:
       pageable:
         default-page-size: 10
         max-page-size: 50
+  sql:
+    init:
+      mode: always # MySQL 같은 외부 DB에서도 data.sql 실행
+      encoding: UTF-8 # 한글 태그 이름 깨짐 방지
 jwt:
   secret: ${JWT_SECRET}
   access-expiration-seconds: 1800
