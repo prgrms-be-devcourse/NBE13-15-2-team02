@@ -19,6 +19,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @Transactional(readOnly = true)
 public class AdoptionService {
@@ -73,5 +75,110 @@ public class AdoptionService {
 
         /* [2-6] 저장된 신청을 응답으로 바꿔 돌려준다. */
         return AdoptionResponse.from(adoptionRequest);
+    }
+
+    /** [3] 입양 신청을 승인한다. 신청은 APPROVED, 고양이는 RESERVED로 함께 바꾼다 (26.11.27/안형빈) */
+    @Transactional
+    public AdoptionResponse approveAdoption(Long memberId, Long adoptionId){
+        /* [3-1] 신청을 조회한다. 없으면 404 */
+        AdoptionRequest request = getAdoptionRequest(adoptionId);
+
+        /* [3-2] 그 고양이의 보호자만 승인할 수 있다. (403) */
+        Cat cat = request.getCat();
+        if(!cat.isOwnedBy(memberId)){
+            throw new BusinessException(ErrorCode.FORBIDDEN, "해당 고양이의 보호자만 처리할 수 있습니다.");
+        }
+
+        /* [3-3] 신청을 승인하고 고양이를 예약 상태로 바꾼다. (상태가 맞지 않으면 409) */
+        request.approve();
+        catService.markReserved(cat.getId());
+
+        /* [3-4] 처리된 신청을 응답으로 바꿔 돌려준다. */
+        return AdoptionResponse.from(request);
+    }
+
+    /** [4] 입양 신청을 거절한다. 승인된 신청을 거절(승인 철회)하면 고양이를 다시 입양 가능 상태로 돌린다 (26.11.27/안형빈) */
+    @Transactional
+    public AdoptionResponse rejectAdoption(Long memberId, Long adoptionId){
+        /* [4-1] 신청을 조회한다. 없으면 404 */
+        AdoptionRequest request = getAdoptionRequest(adoptionId);
+
+        /* [4-2] 그 고양이의 보호자만 거절할 수 있다. (403) */
+        Cat cat = request.getCat();
+        if(!cat.isOwnedBy(memberId)){
+            throw new BusinessException(ErrorCode.FORBIDDEN, "해당 고양이의 보호자만 처리할 수 있습니다.");
+        }
+
+        /* [4-3] 거절하면 상태가 바뀌므로, 먼저 승인된 신청이었는지 저장해 둔다. */
+        AdoptionRequestStatus statusBefore = request.getStatus();
+
+        /* [4-4] 신청을 거절한다. (상태가 맞지 않으면 409) */
+        request.reject();
+
+        /* [4-5] 승인됐던 신청이면 고양이를 다시 입양 가능 상태로 바꾼다. (REQUESTED였다면 고양이는 그대로) */
+        if(statusBefore == AdoptionRequestStatus.APPROVED){
+            catService.markAvailable(cat.getId());
+        }
+
+        /* [4-6] 처리된 신청을 응답으로 바꿔 돌려준다. */
+        return AdoptionResponse.from(request);
+    }
+
+    /** [5] 입양을 완료 처리한다. 고양이는 ADOPTED가 되고, 같은 고양이의 남은 신청은 모두 거절한다 (26.11.27/안형빈) */
+    @Transactional
+    public AdoptionResponse completeAdoption(Long memberId, Long adoptionId){
+        /* [5-1] 신청을 조회한다. 없으면 404 */
+        AdoptionRequest request = getAdoptionRequest(adoptionId);
+
+        /* [5-2] 그 고양이의 보호자만 완료 처리할 수 있다. (403) */
+        Cat cat = request.getCat();
+        if(!cat.isOwnedBy(memberId)){
+            throw new BusinessException(ErrorCode.FORBIDDEN, "해당 고양이의 보호자만 처리할 수 있습니다.");
+        }
+
+        /* [5-3] 신청을 완료 처리하고, 고양이를 입양 완료 상태로 바꾼다. (승인된 신청이 아니면 409) */
+        request.complete();
+        catService.markAdopted(cat.getId());
+        /* [5-4] 같은 고양이의 남은 REQUESTED 신청을 모두 거절한다. */
+        List<AdoptionRequest> waiting = adoptionRequestRepository
+                .findByCatIdAndStatus(cat.getId(), AdoptionRequestStatus.REQUESTED);
+        for(AdoptionRequest other : waiting){
+            other.reject();
+        }
+
+        /* [5-5] 처리된 신청을 응답으로 바꿔 돌려준다. */
+        return AdoptionResponse.from(request);
+    }
+
+    /** [6] 입양 신청을 취소한다. 승인된 신청을 취소하면 고양이를 다시 입양 가능 상태로 돌린다 (26.11.27/안형빈) */
+    @Transactional
+    public AdoptionResponse cancelAdoption(Long memberId, Long adoptionId){
+        /* [6-1] 신청을 조회한다. 없으면 404 */
+        AdoptionRequest request = getAdoptionRequest(adoptionId);
+
+        /* [6-2] 신청한 본인만 취소할 수 있다. (403) */
+        if(!request.getApplicant().getId().equals(memberId)){
+            throw new BusinessException(ErrorCode.FORBIDDEN, "신청한 본인만 취소할 수 있습니다.");
+        }
+
+        /* [6-3] 취소하면 상태가 바뀌므로, 먼저 승인된 신청이었는지 저장해 둔다. */
+        AdoptionRequestStatus statusBefore = request.getStatus();
+
+        /* [6-4] 신청을 취소한다. (입양 완료 뒤처럼 상태가 맞지 않으면 409) */
+        request.cancel();
+
+        /* [6-5] 승인됐던 신청이면 고양이를 다시 입양 가능 상태로 바꾼다. (REQUESTED였다면 고양이는 그대로) */
+        if(statusBefore == AdoptionRequestStatus.APPROVED){
+            catService.markAvailable(request.getCat().getId());
+        }
+
+        /* [6-6] 처리된 신청을 응답으로 바꿔 돌려준다. */
+        return AdoptionResponse.from(request);
+    }
+
+    /** [7] 신청 번호로 신청을 조회한다. 없으면 404 ADOPTION_NOT_FOUND (26.11.27/안형빈) */
+    private AdoptionRequest getAdoptionRequest(Long adoptionId){
+        return adoptionRequestRepository.findById(adoptionId)
+                .orElseThrow(()-> new BusinessException(ErrorCode.ADOPTION_NOT_FOUND));
     }
 }
