@@ -2,12 +2,14 @@ package com.team02.catservice.adoption.service;
 
 import com.team02.catservice.adoption.dto.ScoreResult;
 import com.team02.catservice.adoption.dto.ScoringTag;
-import com.team02.catservice.adoption.dto.TagKind;
+import com.team02.catservice.tag.entity.TagType;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+@Component
 public class RecommendationScorer {
 
     /** [1] 태그 종류별 가중치. 성격이 외모보다 크다 (26.11.24/안형빈) */
@@ -21,7 +23,7 @@ public class RecommendationScorer {
 
         /* [2-2] 겹친 태그를 가중치에 맞는 점수로 바꿔 합산한다. */
         int score = matchedTags.stream()
-                .mapToInt(tag -> weightOf(tag.kind()))
+                .mapToInt(tag -> weightOf(tag.type()))
                 .sum();
 
         /* [2-3] 겹친 태그의 이름만 모은다. (추천 이유로 응답에 쓴다) */
@@ -46,8 +48,8 @@ public class RecommendationScorer {
     }
 
     /** [4] 태그 종류에 맞는 가중치를 돌려준다. 자유 태그는 0점 (26.11.24/안형빈) */
-    private int weightOf(TagKind kind) {
-        return switch (kind) {
+    private int weightOf(TagType type) {
+        return switch (type) {
             case PERSONALITY -> PERSONALITY_WEIGHT;
             case APPEARANCE -> APPEARANCE_WEIGHT;
             case FREE -> 0;

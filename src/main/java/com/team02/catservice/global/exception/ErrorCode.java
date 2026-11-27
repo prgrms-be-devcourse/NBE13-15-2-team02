@@ -14,6 +14,7 @@ public enum ErrorCode {
     // 400
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다."),
     INVALID_TAG(HttpStatus.BAD_REQUEST, "태그 형식이 올바르지 않습니다."),
+    INVALID_TAG_NAME(HttpStatus.BAD_REQUEST, "태그는 1~20자여야 합니다."),
     TAG_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "태그는 최대 10개까지 등록할 수 있습니다."),
     CAT_REQUIRED(HttpStatus.BAD_REQUEST, "입양·분실 글은 고양이를 연결해야 합니다."),
 
@@ -41,6 +42,7 @@ public enum ErrorCode {
     // 409
     DUPLICATE_LOGIN_ID(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
     DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
+    DUPLICATE_ADOPTION_REQUEST(HttpStatus.CONFLICT, "이미 신청한 고양이입니다."),
     ALREADY_LIKED(HttpStatus.CONFLICT, "이미 좋아요를 누른 글입니다."),
     INVALID_ADOPTION_STATUS(HttpStatus.CONFLICT, "현재 상태에서는 처리할 수 없는 입양 요청입니다."),
 
