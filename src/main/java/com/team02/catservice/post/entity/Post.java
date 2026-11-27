@@ -130,4 +130,10 @@ public class Post extends BaseEntity {
         }
     }
 
+    public void validateWriter(Long memberId){
+        if(!member.getId().equals(memberId)){
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+    }
+
 }

@@ -38,4 +38,10 @@ public class PostController {
         return ApiResponse.ok("게시글을 수정했습니다.", response);
     }
 
+    @DeleteMapping("/{postId}")
+    public ApiResponse<Void> delete(@AuthenticationPrincipal Long memberId, @PathVariable Long postId){
+        this.postService.deletePost(memberId, postId);
+        return ApiResponse.ok("게시글을 삭제했습니다.");
+    }
+
 }

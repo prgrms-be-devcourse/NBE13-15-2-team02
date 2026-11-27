@@ -11,10 +11,13 @@ import com.team02.catservice.post.dto.PostCreateRequest;
 import com.team02.catservice.post.dto.PostResponse;
 import com.team02.catservice.post.dto.PostUpdateRequest;
 import com.team02.catservice.post.entity.Post;
+import com.team02.catservice.post.event.PostDeleteEvent;
+import com.team02.catservice.post.repository.PostLikeRepository;
 import com.team02.catservice.post.repository.PostRepository;
 import com.team02.catservice.tag.entity.Tag;
 import com.team02.catservice.tag.service.TagService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +31,8 @@ public class PostService {
     private final MemberService memberService;
     private final CatService catService;
     private final TagService tagService;
+    private final PostLikeRepository postLikeRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     @Transactional
@@ -64,9 +69,7 @@ public class PostService {
     public PostResponse updatePost(Long postId, Long memberId, PostUpdateRequest request){
         Post post = getPost(postId);
 
-        if (!post.getMember().getId().equals(memberId)){
-            throw new BusinessException(ErrorCode.FORBIDDEN);
-        }
+        post.validateWriter(memberId);
 
         post.update(request.title(), request.content(), request.category(), request.imageUrl());
 
@@ -86,6 +89,18 @@ public class PostService {
         }
     }
 
+    @Transactional
+    public void deletePost(Long memberId, Long postId) {
+        Post post = getPost(postId);
+
+        post.validateWriter(memberId);
+
+        eventPublisher.publishEvent(new PostDeleteEvent(postId));
+
+        postLikeRepository.deleteByPostId(postId);
+
+        postRepository.delete(post);
+    }
 
 
 }
