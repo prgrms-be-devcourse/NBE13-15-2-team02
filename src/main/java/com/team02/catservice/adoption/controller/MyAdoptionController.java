@@ -38,4 +38,20 @@ public class MyAdoptionController {
         /* [1-3] 공통 응답 형식(status, message, data)으로 감싸 돌려준다. */
         return ApiResponse.ok("내가 보낸 입양 신청 목록을 조회했습니다.", response);
     }
+
+    /** [2] 내 고양이에 들어온 입양 신청 목록을 최신순으로 조회한다. GET /api/v1/members/me/adoptions/received (26.11.27/안형빈) */
+    @GetMapping("/received")
+    public ApiResponse<PageResponse<AdoptionResponse>> getReceivedAdoptions(
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable
+    ){
+        /* [2-1] 로그인한 회원의 번호를 꺼낸다. */
+        Long memberId = SecurityUtil.getCurrentMemberId();
+
+        /* [2-2] 서비스에서 내 고양이에 들어온 신청을 페이징해서 가져온다. */
+        PageResponse<AdoptionResponse> response = adoptionService.getReceivedAdoptions(memberId, pageable);
+
+        /* [2-3] 공통 응답 형식(status, message, data)으로 감싸 돌려준다. */
+        return ApiResponse.ok("내 고양이에 들어온 입양 신청 목록을 조회했습니다.", response);
+    }
 }
