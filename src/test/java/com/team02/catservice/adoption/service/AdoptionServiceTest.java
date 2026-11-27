@@ -493,6 +493,108 @@ class AdoptionServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("입양 신청 상세 (getAdoption)")
+    class GetAdoption {
+
+        @Test
+        @DisplayName("신청자가 조회하면 신청이 응답으로 돌려진다")
+        void applicant_can_view() {
+            Cat cat = mock(Cat.class);
+            when(cat.getName()).thenReturn("나비");
+            AdoptionRequest request = requestOf(cat, 1L);
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            AdoptionResponse response = adoptionService.getAdoption(1L, 5L);
+
+            assertThat(response.catName()).isEqualTo("나비");
+            assertThat(response.applicantId()).isEqualTo(1L);
+            assertThat(response.status()).isEqualTo(AdoptionRequestStatus.REQUESTED);
+        }
+
+        @Test
+        @DisplayName("고양이의 보호자가 조회해도 된다")
+        void owner_can_view() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(2L)).thenReturn(true);
+            AdoptionRequest request = requestOf(cat, 1L);
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            AdoptionResponse response = adoptionService.getAdoption(2L, 5L);
+
+            assertThat(response.applicantId()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("신청자도 보호자도 아니면 FORBIDDEN 예외가 발생한다")
+        void fails_when_neither_applicant_nor_owner() {
+            Cat cat = mock(Cat.class);
+            when(cat.isOwnedBy(3L)).thenReturn(false);
+            AdoptionRequest request = requestOf(cat, 1L);
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.of(request));
+
+            assertErrorCode(() -> adoptionService.getAdoption(3L, 5L), ErrorCode.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("신청이 없으면 ADOPTION_NOT_FOUND 예외가 발생한다")
+        void fails_when_request_not_found() {
+            when(adoptionRequestRepository.findById(5L)).thenReturn(Optional.empty());
+
+            assertErrorCode(() -> adoptionService.getAdoption(1L, 5L), ErrorCode.ADOPTION_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("내 고양이에 들어온 신청 목록 (getReceivedAdoptions)")
+    class GetReceivedAdoptions {
+
+        @Test
+        @DisplayName("보호자 기준으로 조회한 신청이 응답으로 변환된다")
+        void converts_requests_to_responses() {
+            Cat cat = mock(Cat.class);
+            when(cat.getName()).thenReturn("나비");
+            AdoptionRequest request = requestOf(cat, 1L);
+            when(adoptionRequestRepository.findByCatMemberId(eq(2L), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(request)));
+
+            PageResponse<AdoptionResponse> result = adoptionService.getReceivedAdoptions(2L, PageRequest.of(0, 10));
+
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getContent().get(0).catName()).isEqualTo("나비");
+            assertThat(result.getContent().get(0).applicantId()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("들어온 신청이 없으면 빈 목록을 돌려준다")
+        void returns_empty_when_no_requests() {
+            when(adoptionRequestRepository.findByCatMemberId(eq(2L), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            PageResponse<AdoptionResponse> result = adoptionService.getReceivedAdoptions(2L, PageRequest.of(0, 10));
+
+            assertThat(result.getContent()).isEmpty();
+            assertThat(result.getTotalElements()).isZero();
+        }
+
+        @Test
+        @DisplayName("페이지 정보(page, size, totalElements, totalPages)가 담긴다")
+        void includes_page_info() {
+            Cat cat = mock(Cat.class);
+            AdoptionRequest request = requestOf(cat, 1L);
+            Pageable pageable = PageRequest.of(1, 5);
+            when(adoptionRequestRepository.findByCatMemberId(eq(2L), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(request), pageable, 12));
+
+            PageResponse<AdoptionResponse> result = adoptionService.getReceivedAdoptions(2L, pageable);
+
+            assertThat(result.getPage()).isEqualTo(1);
+            assertThat(result.getSize()).isEqualTo(5);
+            assertThat(result.getTotalElements()).isEqualTo(12);
+            assertThat(result.getTotalPages()).isEqualTo(3);
+        }
+    }
+
     private AdoptionRequest requestOf(Cat cat, Long applicantId) {
         Member applicant = new Member("login", "pw", "nickname");
         ReflectionTestUtils.setField(applicant, "id", applicantId);

@@ -13,6 +13,8 @@ import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "post")
@@ -102,6 +104,36 @@ public class Post extends BaseEntity {
     public void addTag(Tag tag){
         PostTag postTag = new PostTag(this, tag);
         this.postTags.add(postTag);
+    }
+
+    public void replaceTags(List<Tag> newTags){
+        //새 태그 id 모으기
+        Set<Long> newTagIds = newTags.stream()
+                .map(Tag::getId)
+                .collect(Collectors.toSet());
+
+        //빠진 태그 지우기
+        //removeIf는 "조건이 true인 걸 지운다"라서, 우리가 원하는 "지울 조건"을 람다로 표현하는 것.
+        postTags.removeIf(postTag -> !newTagIds.contains(postTag.getTag().getId()));
+
+        //남아 있는 태그 id 모으기
+        Set<Long> currentTagIds = postTags.stream()
+                .map(PostTag::getTag)
+                .map(Tag::getId)
+                .collect(Collectors.toSet());
+
+        //없는 태그만 추가하기
+        for (Tag tag : newTags){
+            if (!currentTagIds.contains(tag.getId())){
+                this.addTag(tag);
+            }
+        }
+    }
+
+    public void validateWriter(Long memberId){
+        if(!member.getId().equals(memberId)){
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
     }
 
 }

@@ -36,4 +36,11 @@ public interface AdoptionRequestRepository extends JpaRepository<AdoptionRequest
             Long catId,
             Collection<AdoptionRequestStatus> statuses
     );
+
+    /** [5] 내 고양이에 들어온 신청 목록을 페이징해서 조회한다. 보호자가 나인 고양이의 신청이다 (26.11.27/안형빈) */
+    @EntityGraph(attributePaths = {"cat", "applicant"})
+    Page<AdoptionRequest> findByCatMemberId(
+            Long memberId,
+            Pageable pageable
+    );
 }

@@ -176,7 +176,34 @@ public class AdoptionService {
         return AdoptionResponse.from(request);
     }
 
-    /** [7] 신청 번호로 신청을 조회한다. 없으면 404 ADOPTION_NOT_FOUND (26.11.27/안형빈) */
+    /** [7] 입양 신청 상세를 조회한다. 신청자와 그 고양이의 보호자만 볼 수 있다 (26.11.27/안형빈) */
+    public AdoptionResponse getAdoption(Long memberId, Long adoptionId){
+        /* [7-1] 신청을 조회한다. 없으면 404 */
+        AdoptionRequest request = getAdoptionRequest(adoptionId);
+
+        /* [7-2] 신청자도 보호자도 아니면 볼 수 없다. (403) */
+        boolean isApplicant = request.getApplicant().getId().equals(memberId);
+        boolean isOwner = request.getCat().isOwnedBy(memberId);
+        if (!isApplicant && !isOwner) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "신청자와 보호자만 조회할 수 있습니다.");
+        }
+
+        /* [7-3] 신청을 응답으로 바꿔 돌려준다. */
+        return AdoptionResponse.from(request);
+    }
+
+    /** [8] 내 고양이에 들어온 입양 신청 목록을 페이징해서 조회한다 (26.11.27/안형빈) */
+    public PageResponse<AdoptionResponse> getReceivedAdoptions(Long memberId, Pageable pageable){
+        /* [8-1] 보호자가 나인 고양이의 신청을 조회하고, 신청 한 건씩 응답 DTO로 바꾼다. */
+        Page<AdoptionResponse> page = adoptionRequestRepository
+                .findByCatMemberId(memberId, pageable)
+                .map(AdoptionResponse::from);
+
+        /* [8-2] 목록과 페이지 정보(page, size, totalElements, totalPages)를 담아 돌려준다. */
+        return PageResponse.from(page);
+    }
+
+    /** [9] 신청 번호로 신청을 조회한다. 없으면 404 ADOPTION_NOT_FOUND (26.11.27/안형빈) */
     private AdoptionRequest getAdoptionRequest(Long adoptionId){
         return adoptionRequestRepository.findById(adoptionId)
                 .orElseThrow(()-> new BusinessException(ErrorCode.ADOPTION_NOT_FOUND));
