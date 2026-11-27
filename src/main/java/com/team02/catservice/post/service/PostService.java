@@ -1,11 +1,15 @@
 package com.team02.catservice.post.service;
 
+import com.team02.catservice.cat.entity.Cat;
+import com.team02.catservice.cat.service.CatService;
 import com.team02.catservice.member.entity.Member;
 import com.team02.catservice.member.service.MemberService;
 import com.team02.catservice.post.dto.PostCreateRequest;
 import com.team02.catservice.post.dto.PostResponse;
 import com.team02.catservice.post.entity.Post;
 import com.team02.catservice.post.repository.PostRepository;
+import com.team02.catservice.tag.entity.Tag;
+import com.team02.catservice.tag.service.TagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,18 +22,23 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final MemberService memberService;
+    private final CatService catService;
+    private final TagService tagService;
 
 
     @Transactional
-    public PostResponse create(Long memberId, PostCreateRequest request){
+    public PostResponse create(Long memberId,PostCreateRequest request){
         Member member = this.memberService.getMember(memberId);
 
-        //TODO cat 조회 로직
+        Cat cat = request.catId() == null ? null : this.catService.getCat(request.catId());
 
         Post post = new Post(request.title(), request.content(), request.category(), request.imageUrl(),
-                member, null); //TODO cat 조회 로직의 변수로 변경.
+                member, cat);
 
-        //TODO tag 붙이는 로직
+        List<Tag> tags = this.tagService.findOrCreateAll(request.tags());
+        for (Tag tag : tags) {
+            post.addTag(tag);
+        }
 
         postRepository.save(post);
 
