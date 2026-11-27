@@ -1,14 +1,16 @@
 # 입양 API 호출 예시. 담당: 안형빈
-# 준비: 보호자가 회원 2인 고양이를 DB에 넣고 아래 catId를 그 id로 바꾼다.
-#       회원 1, 2는 개발용 시드(tester, tester2), 회원 3은 POST /api/v1/auth/signup 으로 만든다.
-# 임시 인증: X-Dev-Member-Id 헤더로 회원을 정한다. JWT 필터로 교체되면 이 파일을 고친다.
+# 준비: auth.http를 먼저 실행해 토큰(token1~token3)을 받는다.
+#       보호자가 회원 2인 고양이를 DB에 넣고 아래 catId를 그 id로 바꾼다. (추천 확인 [21]~[36]은 고양이를 직접 만든다)
+#       회원 1, 2는 개발용 시드(tester, tester2), 회원 3은 auth.http의 [1]에서 만든다.
+# 인증: 로그인이 필요한 요청은 Authorization: Bearer {{tokenN}} 헤더로 회원 N의 토큰을 보낸다.
+#       토큰은 30분 뒤 만료된다. 401이 나오면 auth.http의 로그인을 다시 실행한다.
 
 @catId = 1
 
 ### [1] 입양 신청 (회원 1) - 201, 응답의 adoptionId를 a_id로 저장
 POST http://{{host}}/api/v1/adoptions
 Content-Type: application/json
-X-Dev-Member-Id: 1
+Authorization: Bearer {{token1}}
 
 { "catId": {{catId}}, "message": "키우고 싶어요" }
 
@@ -17,7 +19,7 @@ X-Dev-Member-Id: 1
 ### [2] 입양 신청 (회원 3) - 201, 응답의 adoptionId를 b_id로 저장
 POST http://{{host}}/api/v1/adoptions
 Content-Type: application/json
-X-Dev-Member-Id: 3
+Authorization: Bearer {{token3}}
 
 { "catId": {{catId}}, "message": "저도 키우고 싶어요" }
 
@@ -26,90 +28,185 @@ X-Dev-Member-Id: 3
 ### [3] 같은 고양이에 다시 신청 (회원 1) - 409 중복 신청
 POST http://{{host}}/api/v1/adoptions
 Content-Type: application/json
-X-Dev-Member-Id: 1
+Authorization: Bearer {{token1}}
 
 { "catId": {{catId}}, "message": "키우고 싶어요" }
 
 ### [4] 본인 고양이에 신청 (회원 2) - 403
 POST http://{{host}}/api/v1/adoptions
 Content-Type: application/json
-X-Dev-Member-Id: 2
+Authorization: Bearer {{token2}}
 
 { "catId": {{catId}}, "message": "내 고양이" }
 
 ### [5] 내가 보낸 신청 목록 (회원 1) - 200, 최신순 페이징
 GET http://{{host}}/api/v1/members/me/adoptions?page=0&size=10
-X-Dev-Member-Id: 1
+Authorization: Bearer {{token1}}
 
 ### [6] 신청 상세 (신청자 1) - 200
 GET http://{{host}}/api/v1/adoptions/{{a_id}}
-X-Dev-Member-Id: 1
+Authorization: Bearer {{token1}}
 
 ### [7] 신청 상세 (보호자 2) - 200
 GET http://{{host}}/api/v1/adoptions/{{a_id}}
-X-Dev-Member-Id: 2
+Authorization: Bearer {{token2}}
 
 ### [8] 신청 상세 (신청자도 보호자도 아닌 회원 3) - 403
 GET http://{{host}}/api/v1/adoptions/{{a_id}}
-X-Dev-Member-Id: 3
+Authorization: Bearer {{token3}}
 
 ### [9] 내 고양이에 들어온 신청 목록 (보호자 2) - 200, 최신순 페이징
 GET http://{{host}}/api/v1/members/me/adoptions/received?page=0&size=10
-X-Dev-Member-Id: 2
+Authorization: Bearer {{token2}}
 
 ### [10] 내 고양이에 들어온 신청 목록 (신청자 1) - 200, 내 고양이가 아니라 빈 목록
 GET http://{{host}}/api/v1/members/me/adoptions/received?page=0&size=10
-X-Dev-Member-Id: 1
+Authorization: Bearer {{token1}}
 
 ### [11] 승인 (보호자 2) - 200, 신청 APPROVED / 고양이 RESERVED
 PATCH http://{{host}}/api/v1/adoptions/{{a_id}}/approve
-X-Dev-Member-Id: 2
+Authorization: Bearer {{token2}}
 
 ### [12] 다른 신청 승인 (보호자 2) - 409 이미 예약된 고양이
 PATCH http://{{host}}/api/v1/adoptions/{{b_id}}/approve
-X-Dev-Member-Id: 2
+Authorization: Bearer {{token2}}
 
 ### [13] 신청자가 승인 시도 (회원 1) - 403 보호자만 가능
 PATCH http://{{host}}/api/v1/adoptions/{{a_id}}/approve
-X-Dev-Member-Id: 1
+Authorization: Bearer {{token1}}
 
 ### [14] 거절 = 승인 철회 (보호자 2) - 200, 신청 REJECTED / 고양이 AVAILABLE
 PATCH http://{{host}}/api/v1/adoptions/{{a_id}}/reject
-X-Dev-Member-Id: 2
+Authorization: Bearer {{token2}}
 
 ### [15] 승인 (보호자 2) - 200, 다른 신청을 승인
 PATCH http://{{host}}/api/v1/adoptions/{{b_id}}/approve
-X-Dev-Member-Id: 2
+Authorization: Bearer {{token2}}
 
 ### [16] 완료 (보호자 2) - 200, 신청 COMPLETED / 고양이 ADOPTED
 PATCH http://{{host}}/api/v1/adoptions/{{b_id}}/complete
-X-Dev-Member-Id: 2
+Authorization: Bearer {{token2}}
 
 ### [17] 완료된 신청 취소 (신청자 3) - 409
 PATCH http://{{host}}/api/v1/adoptions/{{b_id}}/cancel
-X-Dev-Member-Id: 3
+Authorization: Bearer {{token3}}
 
 ### [18] 신청자가 아닌 회원이 취소 (회원 2) - 403 신청자만 가능
 PATCH http://{{host}}/api/v1/adoptions/{{a_id}}/cancel
-X-Dev-Member-Id: 2
+Authorization: Bearer {{token2}}
 
 ### [19] 없는 신청 (회원 2) - 404
 PATCH http://{{host}}/api/v1/adoptions/999999/approve
-X-Dev-Member-Id: 2
+Authorization: Bearer {{token2}}
 
 ### [20] 빈 메시지로 신청 (회원 1) - 400
 POST http://{{host}}/api/v1/adoptions
 Content-Type: application/json
-X-Dev-Member-Id: 1
+Authorization: Bearer {{token1}}
 
 { "catId": {{catId}}, "message": "" }
 
 ###
 # ---------------------------------------------------------------------------
-# 아래는 아직 구현하지 않은 API다. 요청은 주석으로 막아 두었다.
-# 구현이 끝나면 주석(#)을 풀고 "[미구현]" 표시를 지운다.
+# 추천 API 확인 ([21]~[36]). 위의 입양 흐름([1]~[20])과 따로 실행한다.
+# 선호 태그(장모=외모, 개냥이=성격)를 가진 회원 1에게 겹치는 정도가 다른 고양이 세 마리를 추천받는다.
+#   고양이 C(개냥이, 장모) 5점 > 고양이 A(개냥이) 3점 > 고양이 B(장모) 2점
+# 프리셋 태그 번호는 data.sql 순서대로 장모=1, 개냥이=7이다. 다르면 [21]로 확인해서 [22]의 tagIds를 고친다.
+# DB에 이미 입양 가능한 다른 고양이가 있으면 목록에 함께 나올 수 있다.
 # ---------------------------------------------------------------------------
 
-### [미구현] 추천 고양이 목록 (회원 1)
-# GET http://{{host}}/api/v1/adoptions/recommendations
-# X-Dev-Member-Id: 1
+### [21] 프리셋 태그 번호 확인 - 200, 12개 (외모 6, 성격 6)
+GET http://{{host}}/api/v1/tags?size=20
+
+### [22] 선호 태그 설정 (회원 1) - 200, 장모와 개냥이
+PUT http://{{host}}/api/v1/members/me/preferred-tags
+Content-Type: application/json
+Authorization: Bearer {{token1}}
+
+{ "tagIds": [1, 7] }
+
+### [23] 고양이 A 등록 (보호자 2, 태그 개냥이) - 201, catId를 rc_a로 저장
+POST http://{{host}}/api/v1/cats
+Content-Type: application/json
+Authorization: Bearer {{token2}}
+
+{ "name": "추천A", "type": "PET", "tags": ["개냥이"] }
+
+> {% client.global.set("rc_a", response.body.data.catId); %}
+
+### [24] 고양이 B 등록 (보호자 2, 태그 장모) - 201, catId를 rc_b로 저장
+POST http://{{host}}/api/v1/cats
+Content-Type: application/json
+Authorization: Bearer {{token2}}
+
+{ "name": "추천B", "type": "PET", "tags": ["장모"] }
+
+> {% client.global.set("rc_b", response.body.data.catId); %}
+
+### [25] 고양이 C 등록 (보호자 2, 태그 개냥이와 장모) - 201, catId를 rc_c로 저장
+POST http://{{host}}/api/v1/cats
+Content-Type: application/json
+Authorization: Bearer {{token2}}
+
+{ "name": "추천C", "type": "PET", "tags": ["개냥이", "장모"] }
+
+> {% client.global.set("rc_c", response.body.data.catId); %}
+
+### [26] 고양이 A 공고 열기 (보호자 2) - 200, AVAILABLE
+PATCH http://{{host}}/api/v1/cats/{{rc_a}}/adoption-status
+Content-Type: application/json
+Authorization: Bearer {{token2}}
+
+{ "adoptionStatus": "AVAILABLE" }
+
+### [27] 고양이 B 공고 열기 (보호자 2) - 200, AVAILABLE
+PATCH http://{{host}}/api/v1/cats/{{rc_b}}/adoption-status
+Content-Type: application/json
+Authorization: Bearer {{token2}}
+
+{ "adoptionStatus": "AVAILABLE" }
+
+### [28] 고양이 C 공고 열기 (보호자 2) - 200, AVAILABLE
+PATCH http://{{host}}/api/v1/cats/{{rc_c}}/adoption-status
+Content-Type: application/json
+Authorization: Bearer {{token2}}
+
+{ "adoptionStatus": "AVAILABLE" }
+
+### [29] 추천 목록 (회원 1) - 200, 추천C(5점, 개냥이·장모) > 추천A(3점) > 추천B(2점)
+GET http://{{host}}/api/v1/adoptions/recommendations
+Authorization: Bearer {{token1}}
+
+### [30] 추천 목록 size=2 (회원 1) - 200, 2마리만
+GET http://{{host}}/api/v1/adoptions/recommendations?size=2
+Authorization: Bearer {{token1}}
+
+### [31] 추천C에 입양 신청 (회원 1) - 201
+POST http://{{host}}/api/v1/adoptions
+Content-Type: application/json
+Authorization: Bearer {{token1}}
+
+{ "catId": {{rc_c}}, "message": "추천받고 신청해요" }
+
+### [32] 추천 목록 다시 (회원 1) - 200, 신청한 추천C가 빠짐
+GET http://{{host}}/api/v1/adoptions/recommendations
+Authorization: Bearer {{token1}}
+
+### [33] 선호 태그 비우기 (회원 1) - 200, 빈 목록
+PUT http://{{host}}/api/v1/members/me/preferred-tags
+Content-Type: application/json
+Authorization: Bearer {{token1}}
+
+{ "tagIds": [] }
+
+### [34] 선호 태그 없이 추천 (회원 1) - 200, 모두 0점으로 최근 등록순, message에 선호 태그 설정 안내
+GET http://{{host}}/api/v1/adoptions/recommendations
+Authorization: Bearer {{token1}}
+
+### [35] size가 0 (회원 1) - 400
+GET http://{{host}}/api/v1/adoptions/recommendations?size=0
+Authorization: Bearer {{token1}}
+
+### [36] size가 51 (회원 1) - 400
+GET http://{{host}}/api/v1/adoptions/recommendations?size=51
+Authorization: Bearer {{token1}}

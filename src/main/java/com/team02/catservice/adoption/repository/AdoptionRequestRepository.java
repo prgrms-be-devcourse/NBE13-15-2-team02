@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -42,5 +44,16 @@ public interface AdoptionRequestRepository extends JpaRepository<AdoptionRequest
     Page<AdoptionRequest> findByCatMemberId(
             Long memberId,
             Pageable pageable
+    );
+
+    /** [6] 내가 신청한 적이 있는 고양이 번호를 모두 조회한다. 신청 상태와 무관하다. 추천에서 제외하는 데 쓴다 (26.11.27/안형빈) */
+    @Query("""
+            SELECT DISTINCT r.cat.id
+            FROM AdoptionRequest r
+            WHERE r.applicant.id = :applicantId
+            """)
+    List<Long> findCatIdsByApplicantId(
+            @Param("applicantId")
+            Long applicantId
     );
 }
