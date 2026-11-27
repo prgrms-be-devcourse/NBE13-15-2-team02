@@ -1,7 +1,6 @@
 package com.team02.catservice.post.service;
 
 import com.team02.catservice.member.entity.Member;
-import com.team02.catservice.member.repository.MemberRepository;
 import com.team02.catservice.member.service.MemberService;
 import com.team02.catservice.post.dto.PostCreateRequest;
 import com.team02.catservice.post.dto.PostResponse;
@@ -36,8 +35,6 @@ public class PostService {
 
         return PostResponse.from(post);
     }
-
-
 
 
     @Transactional
