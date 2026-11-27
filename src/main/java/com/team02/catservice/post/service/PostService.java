@@ -9,6 +9,7 @@ import com.team02.catservice.member.entity.Member;
 import com.team02.catservice.member.service.MemberService;
 import com.team02.catservice.post.dto.PostCreateRequest;
 import com.team02.catservice.post.dto.PostResponse;
+import com.team02.catservice.post.dto.PostUpdateRequest;
 import com.team02.catservice.post.entity.Post;
 import com.team02.catservice.post.repository.PostRepository;
 import com.team02.catservice.tag.entity.Tag;
@@ -59,6 +60,23 @@ public class PostService {
         return PostResponse.from(post);
     }
 
+    @Transactional
+    public PostResponse updatePost(Long memberId, Long postId, PostUpdateRequest request){
+        Post post = getPost(postId);
+
+        if (!post.getMember().getId().equals(memberId)){
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        post.update(request.title(), request.content(), request.category(), request.imageUrl());
+
+        if (request.tags() != null){
+            List<Tag> tags = this.tagService.findOrCreateAll(request.tags());
+            post.replaceTags(tags);
+        }
+
+        return PostResponse.from(post);
+    }
 
     @Transactional
     public void releaseCatFromPosts(Long catId){
@@ -67,6 +85,8 @@ public class PostService {
             post.releaseCat();
         }
     }
+
+
 
 }
 
