@@ -102,4 +102,20 @@ public class AdoptionController {
         /* [5-3] 공통 응답 형식(status, message, data)으로 감싸 돌려준다. */
         return ApiResponse.ok("입양 신청을 취소했습니다.", response);
     }
+
+    /** [6] 입양 신청 상세를 조회한다. GET /api/v1/adoptions/{adoptionId} (26.11.27/안형빈) */
+    @GetMapping("/{adoptionId}")
+    public ApiResponse<AdoptionResponse> getAdoption(
+            @PathVariable
+            Long adoptionId
+    ){
+        /* [6-1] 로그인한 회원의 번호를 꺼낸다. */
+        Long memberId = SecurityUtil.getCurrentMemberId();
+
+        /* [6-2] 서비스에서 신청 상세를 조회한다. */
+        AdoptionResponse response = adoptionService.getAdoption(memberId, adoptionId);
+
+        /* [6-3] 공통 응답 형식(status, message, data)으로 감싸 돌려준다. */
+        return ApiResponse.ok("입양 신청을 조회했습니다.", response);
+    }
 }

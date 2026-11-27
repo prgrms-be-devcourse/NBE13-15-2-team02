@@ -5,7 +5,7 @@
 
 @catId = 1
 
-### 입양 신청 (회원 1) - 201, 응답의 adoptionId를 a_id로 저장
+### [1] 입양 신청 (회원 1) - 201, 응답의 adoptionId를 a_id로 저장
 POST http://{{host}}/api/v1/adoptions
 Content-Type: application/json
 X-Dev-Member-Id: 1
@@ -14,7 +14,7 @@ X-Dev-Member-Id: 1
 
 > {% client.global.set("a_id", response.body.data.adoptionId); %}
 
-### 입양 신청 (회원 3) - 201, 응답의 adoptionId를 b_id로 저장
+### [2] 입양 신청 (회원 3) - 201, 응답의 adoptionId를 b_id로 저장
 POST http://{{host}}/api/v1/adoptions
 Content-Type: application/json
 X-Dev-Member-Id: 3
@@ -23,61 +23,81 @@ X-Dev-Member-Id: 3
 
 > {% client.global.set("b_id", response.body.data.adoptionId); %}
 
-### 같은 고양이에 다시 신청 (회원 1) - 409 중복 신청
+### [3] 같은 고양이에 다시 신청 (회원 1) - 409 중복 신청
 POST http://{{host}}/api/v1/adoptions
 Content-Type: application/json
 X-Dev-Member-Id: 1
 
 { "catId": {{catId}}, "message": "키우고 싶어요" }
 
-### 본인 고양이에 신청 (회원 2) - 403
+### [4] 본인 고양이에 신청 (회원 2) - 403
 POST http://{{host}}/api/v1/adoptions
 Content-Type: application/json
 X-Dev-Member-Id: 2
 
 { "catId": {{catId}}, "message": "내 고양이" }
 
-### 내가 보낸 신청 목록 (회원 1) - 200, 최신순 페이징
+### [5] 내가 보낸 신청 목록 (회원 1) - 200, 최신순 페이징
 GET http://{{host}}/api/v1/members/me/adoptions?page=0&size=10
 X-Dev-Member-Id: 1
 
-### 승인 (보호자 2) - 200, 신청 APPROVED / 고양이 RESERVED
+### [6] 신청 상세 (신청자 1) - 200
+GET http://{{host}}/api/v1/adoptions/{{a_id}}
+X-Dev-Member-Id: 1
+
+### [7] 신청 상세 (보호자 2) - 200
+GET http://{{host}}/api/v1/adoptions/{{a_id}}
+X-Dev-Member-Id: 2
+
+### [8] 신청 상세 (신청자도 보호자도 아닌 회원 3) - 403
+GET http://{{host}}/api/v1/adoptions/{{a_id}}
+X-Dev-Member-Id: 3
+
+### [9] 내 고양이에 들어온 신청 목록 (보호자 2) - 200, 최신순 페이징
+GET http://{{host}}/api/v1/members/me/adoptions/received?page=0&size=10
+X-Dev-Member-Id: 2
+
+### [10] 내 고양이에 들어온 신청 목록 (신청자 1) - 200, 내 고양이가 아니라 빈 목록
+GET http://{{host}}/api/v1/members/me/adoptions/received?page=0&size=10
+X-Dev-Member-Id: 1
+
+### [11] 승인 (보호자 2) - 200, 신청 APPROVED / 고양이 RESERVED
 PATCH http://{{host}}/api/v1/adoptions/{{a_id}}/approve
 X-Dev-Member-Id: 2
 
-### 다른 신청 승인 (보호자 2) - 409 이미 예약된 고양이
+### [12] 다른 신청 승인 (보호자 2) - 409 이미 예약된 고양이
 PATCH http://{{host}}/api/v1/adoptions/{{b_id}}/approve
 X-Dev-Member-Id: 2
 
-### 신청자가 승인 시도 (회원 1) - 403 보호자만 가능
+### [13] 신청자가 승인 시도 (회원 1) - 403 보호자만 가능
 PATCH http://{{host}}/api/v1/adoptions/{{a_id}}/approve
 X-Dev-Member-Id: 1
 
-### 거절 = 승인 철회 (보호자 2) - 200, 신청 REJECTED / 고양이 AVAILABLE
+### [14] 거절 = 승인 철회 (보호자 2) - 200, 신청 REJECTED / 고양이 AVAILABLE
 PATCH http://{{host}}/api/v1/adoptions/{{a_id}}/reject
 X-Dev-Member-Id: 2
 
-### 승인 (보호자 2) - 200, 다른 신청을 승인
+### [15] 승인 (보호자 2) - 200, 다른 신청을 승인
 PATCH http://{{host}}/api/v1/adoptions/{{b_id}}/approve
 X-Dev-Member-Id: 2
 
-### 완료 (보호자 2) - 200, 신청 COMPLETED / 고양이 ADOPTED
+### [16] 완료 (보호자 2) - 200, 신청 COMPLETED / 고양이 ADOPTED
 PATCH http://{{host}}/api/v1/adoptions/{{b_id}}/complete
 X-Dev-Member-Id: 2
 
-### 완료된 신청 취소 (신청자 3) - 409
+### [17] 완료된 신청 취소 (신청자 3) - 409
 PATCH http://{{host}}/api/v1/adoptions/{{b_id}}/cancel
 X-Dev-Member-Id: 3
 
-### 신청자가 아닌 회원이 취소 (회원 2) - 403 신청자만 가능
+### [18] 신청자가 아닌 회원이 취소 (회원 2) - 403 신청자만 가능
 PATCH http://{{host}}/api/v1/adoptions/{{a_id}}/cancel
 X-Dev-Member-Id: 2
 
-### 없는 신청 (회원 2) - 404
+### [19] 없는 신청 (회원 2) - 404
 PATCH http://{{host}}/api/v1/adoptions/999999/approve
 X-Dev-Member-Id: 2
 
-### 빈 메시지로 신청 (회원 1) - 400
+### [20] 빈 메시지로 신청 (회원 1) - 400
 POST http://{{host}}/api/v1/adoptions
 Content-Type: application/json
 X-Dev-Member-Id: 1
@@ -89,14 +109,6 @@ X-Dev-Member-Id: 1
 # 아래는 아직 구현하지 않은 API다. 요청은 주석으로 막아 두었다.
 # 구현이 끝나면 주석(#)을 풀고 "[미구현]" 표시를 지운다.
 # ---------------------------------------------------------------------------
-
-### [미구현] 신청 상세 (신청자 또는 보호자)
-# GET http://{{host}}/api/v1/adoptions/{{a_id}}
-# X-Dev-Member-Id: 1
-
-### [미구현] 내 고양이에 들어온 신청 목록 (보호자 2)
-# GET http://{{host}}/api/v1/members/me/adoptions/received?page=0&size=10
-# X-Dev-Member-Id: 2
 
 ### [미구현] 추천 고양이 목록 (회원 1)
 # GET http://{{host}}/api/v1/adoptions/recommendations
